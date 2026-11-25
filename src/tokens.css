@@ -63,9 +63,6 @@
   --chart-7: #3fa2d8;
   --chart-8: #b8873b;
   --chart-neutral: #8f8f8f;
-  --chart-direct: #3d3d3d;
-  --chart-up: var(--gray-400);
-  --chart-down: var(--chart-1);
   --chart-grid: color-mix(in srgb, var(--fg) 6%, transparent);
 
   --shadow-overlay: 0 0 0 1px rgb(0 0 0 / 0.06), 0 12px 32px rgb(0 0 0 / 0.14);
@@ -130,8 +127,6 @@
     --chart-7: #5cbcef;
     --chart-8: #d2a45a;
     --chart-neutral: #6f6f6f;
-    --chart-direct: #cfcfcf;
-    --chart-up: #6f6f6f;
     --shadow-overlay: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.45);
     --scrim: rgb(0 0 0 / 0.6);
     color-scheme: dark;

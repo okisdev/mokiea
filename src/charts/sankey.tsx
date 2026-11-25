@@ -1,12 +1,13 @@
 import { chartColor } from './color';
 
 export interface SankeyDto {
-  nodes: { id: string; label: string; kind: 'client' | 'policy' | 'country' }[];
-  links: { source: number; target: number; bytes: number }[];
+  nodes: { id: string; label: string; column: number }[];
+  links: { source: number; target: number; value: number }[];
 }
 
 export interface SankeyProps {
   data: SankeyDto;
+  columns: string[];
   height?: number;
   onLink?: (source: string, target: string) => void;
   format?: (value: number) => string;
@@ -14,21 +15,20 @@ export interface SankeyProps {
 
 export function Sankey({
   data,
+  columns,
   height = 340,
   onLink,
   format = (n) => n.toLocaleString(),
 }: SankeyProps) {
   const nodes = data.nodes;
-  const links = data.links.filter((l) => nodes[l.source] && nodes[l.target] && l.bytes > 0);
-  const kinds = ['client', 'policy', 'country'] as const;
-  const x = [130, 400, 670];
+  const links = data.links.filter((l) => nodes[l.source] && nodes[l.target] && l.value > 0);
   const positions = new Map<number, { x: number; y: number; height: number }>();
-  kinds.forEach((kind, layer) => {
-    const members = nodes.map((n, i) => ({ n, i })).filter(({ n }) => n.kind === kind);
+  columns.forEach((_, column) => {
+    const members = nodes.map((n, i) => ({ n, i })).filter(({ n }) => n.column === column);
     const totals = members.map(({ i }) =>
       Math.max(
         1,
-        links.filter((l) => l.source === i || l.target === i).reduce((n, l) => n + l.bytes, 0),
+        links.filter((l) => l.source === i || l.target === i).reduce((n, l) => n + l.value, 0),
       ),
     );
     const sum = totals.reduce((n, v) => n + v, 0);
@@ -40,7 +40,7 @@ export function Sankey({
     let y = 10;
     members.forEach(({ i }, index) => {
       const h = Math.max(2, (totals[index] / sum) * available);
-      positions.set(i, { x: x[layer], y, height: h });
+      positions.set(i, { x: columns.length === 1 ? 400 : 130 + (column * 540) / (columns.length - 1), y, height: h });
       y += h + gap;
     });
   });
@@ -51,11 +51,11 @@ export function Sankey({
     const source = positions.get(link.source);
     const target = positions.get(link.target);
     if (!source || !target || target.x <= source.x) return [];
-    const outTotal = links.filter((l) => l.source === link.source).reduce((n, l) => n + l.bytes, 0);
-    const inTotal = links.filter((l) => l.target === link.target).reduce((n, l) => n + l.bytes, 0);
+    const outTotal = links.filter((l) => l.source === link.source).reduce((n, l) => n + l.value, 0);
+    const inTotal = links.filter((l) => l.target === link.target).reduce((n, l) => n + l.value, 0);
     const thickness = Math.max(
       1,
-      Math.min((source.height * link.bytes) / outTotal, (target.height * link.bytes) / inTotal),
+      Math.min((source.height * link.value) / outTotal, (target.height * link.value) / inTotal),
     );
     const sy = source.y + (outgoing.get(link.source) ?? 0) + thickness / 2;
     const ty = target.y + (incoming.get(link.target) ?? 0) + thickness / 2;
@@ -73,11 +73,7 @@ export function Sankey({
   return (
     <div
       role="img"
-      aria-label={
-        links.length
-          ? `${nodes.length} 个节点（客户端、策略、国家），${links.length} 条流向`
-          : '暂无数据'
-      }
+      aria-label={links.length ? `${nodes.length} 个节点（${columns.join('、')}），${links.length} 条流向` : '暂无数据'}
     >
       {links.length ? (
         <svg
@@ -104,13 +100,13 @@ export function Sankey({
               role={onLink ? 'button' : undefined}
               style={{ cursor: onLink ? 'pointer' : undefined }}
             >
-              <title>{`${nodes[link.source].label} → ${nodes[link.target].label}: ${format(link.bytes)}`}</title>
+              <title>{`${nodes[link.source].label} → ${nodes[link.target].label}: ${format(link.value)}`}</title>
             </path>
           ))}
           {nodes.map((node, i) => {
             const p = positions.get(i);
             if (!p) return null;
-            const side = node.kind === 'client' ? -1 : 1;
+            const side = node.column === 0 ? -1 : 1;
             return (
               <g key={node.id}>
                 <rect
@@ -119,7 +115,7 @@ export function Sankey({
                   width="10"
                   height={p.height}
                   rx="2"
-                  fill={chartColor(node.kind, i)}
+                  fill={chartColor(String(node.column), node.column)}
                 />
                 <text
                   x={p.x + (side < 0 ? -6 : 16)}
