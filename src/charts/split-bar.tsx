@@ -1,21 +1,23 @@
+import { chartColor } from './color';
+
 export interface SplitBarProps {
-  inValue: number;
-  outValue: number;
+  parts: { label: string; value: number; color?: string }[];
   max?: number;
   format?: (value: number) => string;
 }
 
 export function SplitBar({
-  inValue,
-  outValue,
+  parts,
   max,
   format = (n) => n.toLocaleString(),
 }: SplitBarProps) {
-  const down = Math.max(0, inValue);
-  const up = Math.max(0, outValue);
-  const scale = Math.max(1, max ?? down + up, down + up);
+  const total = parts.reduce((sum, part) => sum + Math.max(0, part.value), 0);
+  const scale = Math.max(1, max ?? total, total);
   return (
-    <div role="img" aria-label={`下行 ${format(down)}，上行 ${format(up)}`}>
+    <div
+      role="img"
+      aria-label={parts.map((part) => `${part.label} ${format(part.value)}`).join('，')}
+    >
       <div
         style={{
           display: 'flex',
@@ -25,8 +27,15 @@ export function SplitBar({
           background: 'var(--chart-grid)',
         }}
       >
-        <span style={{ width: `${(down / scale) * 100}%`, background: 'var(--chart-down)' }} />
-        <span style={{ width: `${(up / scale) * 100}%`, background: 'var(--chart-up)' }} />
+        {parts.map((part, index) => (
+          <span
+            key={index}
+            style={{
+              width: `${(Math.max(0, part.value) / scale) * 100}%`,
+              background: part.color ?? chartColor(String(index), index),
+            }}
+          />
+        ))}
       </div>
       <div
         style={{
@@ -38,12 +47,11 @@ export function SplitBar({
           fontSize: '11px',
         }}
       >
-        <span>
-          <b style={{ color: 'var(--chart-down)' }}>●</b> 下行 {format(down)}
-        </span>
-        <span>
-          <b style={{ color: 'var(--chart-up)' }}>●</b> 上行 {format(up)}
-        </span>
+        {parts.map((part, index) => (
+          <span key={index}>
+            <b style={{ color: part.color ?? chartColor(String(index), index) }}>●</b> {part.label} {format(part.value)}
+          </span>
+        ))}
       </div>
     </div>
   );

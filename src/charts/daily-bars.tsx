@@ -1,22 +1,24 @@
 import { useState } from 'preact/hooks';
 import { date as formatDate } from '../format';
 import { AxisLabels } from './axis-labels';
+import { chartColor } from './color';
 import { ChartTooltip } from './tooltip';
 
 export interface DailyPoint {
   day: string;
-  in: number;
-  out: number;
+  values: number[];
 }
 
 export interface DailyBarsProps {
   points: DailyPoint[];
+  series: { label: string; color?: string }[];
   height?: number;
   format?: (value: number) => string;
 }
 
 export function DailyBars({
   points,
+  series,
   height = 200,
   format = (n) => n.toLocaleString(),
 }: DailyBarsProps) {
@@ -25,7 +27,9 @@ export function DailyBars({
   const base = height - 22;
   const cell = w / Math.max(1, points.length);
   const bw = Math.min(26, cell * 0.67);
-  const max = Math.max(1, ...points.map((p) => Math.max(0, p.in) + Math.max(0, p.out)));
+  const total = (point: DailyPoint) =>
+    series.reduce((sum, _, index) => sum + Math.max(0, point.values[index] ?? 0), 0);
+  const max = Math.max(1, ...points.map(total));
   const label = (day: string) => {
     const date = new Date(`${day}T00:00:00`);
     return Number.isNaN(+date) ? day : formatDate(+date);
@@ -33,7 +37,7 @@ export function DailyBars({
   return (
     <div
       role="img"
-      aria-label={points.length ? `${points.length} 天的流量，峰值 ${format(max)}` : '暂无数据'}
+      aria-label={points.length ? `${points.length} 天，峰值 ${format(max)}` : '暂无数据'}
       style={{ width: '100%', position: 'relative' }}
       onPointerLeave={() => setHover(null)}
     >
@@ -49,20 +53,25 @@ export function DailyBars({
             ))}
             {points.map((p, i) => {
               const x = i * cell + (cell - bw) / 2;
-              const down = (Math.max(0, p.in) / max) * (base - 8);
-              const up = (Math.max(0, p.out) / max) * (base - 8);
+              let stacked = 0;
               return (
                 <g key={i} onPointerEnter={() => setHover(i)}>
                   <rect x={i * cell} width={cell} height={base} fill="transparent" />
-                  <rect x={x} y={base - down} width={bw} height={down} fill="var(--chart-down)" />
-                  <rect
-                    x={x}
-                    y={base - down - up}
-                    width={bw}
-                    height={up}
-                    rx="2"
-                    fill="var(--chart-up)"
-                  />
+                  {series.map((item, index) => {
+                    const barHeight = (Math.max(0, p.values[index] ?? 0) / max) * (base - 8);
+                    stacked += barHeight;
+                    return (
+                      <rect
+                        key={index}
+                        x={x}
+                        y={base - stacked}
+                        width={bw}
+                        height={barHeight}
+                        rx={index === series.length - 1 ? 2 : undefined}
+                        fill={item.color ?? chartColor(String(index), index)}
+                      />
+                    );
+                  })}
                 </g>
               );
             })}
@@ -74,9 +83,15 @@ export function DailyBars({
               x={`clamp(85px, ${((hover + 0.5) * 100) / points.length}%, calc(100% - 85px))`}
               y={base / 2}
               rows={[
-                { label: '下行', value: format(points[hover].in), color: 'var(--chart-down)' },
-                { label: '上行', value: format(points[hover].out), color: 'var(--chart-up)' },
-                { label: '合计', value: format(points[hover].in + points[hover].out) },
+                ...series.map((item, index) => ({
+                  label: item.label,
+                  value: format(points[hover].values[index] ?? 0),
+                  color: item.color ?? chartColor(String(index), index),
+                })),
+                {
+                  label: '合计',
+                  value: format(series.reduce((sum, _, index) => sum + (points[hover].values[index] ?? 0), 0)),
+                },
               ]}
             />
           )}

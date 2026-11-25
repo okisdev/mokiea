@@ -19,7 +19,8 @@ export interface TimeSeriesProps {
   mode?: 'line' | 'area' | 'stacked' | 'mirrored';
   height?: number;
   format?: (value: number) => string;
-  peakIn?: number;
+  peak?: number;
+  peakLabel?: string;
   /** Drops the legend and the time axis, for a chart that sits inside a summary card. */
   compact?: boolean;
   /** Lets the reader drag across the chart to pick a time range. */
@@ -46,7 +47,8 @@ export function TimeSeries({
   mode = 'area',
   height = 200,
   format = (n) => n.toLocaleString(),
-  peakIn,
+  peak: peakOverride,
+  peakLabel = '峰值',
   compact = false,
   onSelect,
 }: TimeSeriesProps) {
@@ -85,7 +87,7 @@ export function TimeSeries({
   const hasPeaks = data.some((p) => p.peaks !== undefined);
   const peakValue = (p: TimeSeriesPoint, key: string) =>
     Math.max(0, p.peaks?.[key] ?? p.values[key] ?? 0);
-  const peak = Math.max(
+  const computedPeak = Math.max(
     0,
     ...(mode === 'stacked'
       ? data.map((p) => active.reduce((n, s) => n + peakValue(p, s.key), 0))
@@ -98,13 +100,22 @@ export function TimeSeries({
         active.filter((s) => series.indexOf(s) % 2 === direction).map((s) => peakValue(p, s.key)),
       ),
     );
-  const peakLabel =
+  const summaryPeak =
     mode === 'mirrored'
-      ? `峰值 ↓${format(directionPeak(0))} ↑${format(directionPeak(1))}`
-      : `${mode === 'stacked' && (hasPeaks || peakIn !== undefined) ? '峰值下行' : '峰值'} ${format(peakIn ?? peak)}`;
+      ? `${peakLabel} ${[0, 1]
+          .map((direction) => {
+            const labels = active
+              .filter((s) => series.indexOf(s) % 2 === direction)
+              .map((s) => s.label)
+              .join('、');
+            return labels ? `${labels} ${format(directionPeak(direction))}` : null;
+          })
+          .filter(Boolean)
+          .join('，')}`
+      : `${peakLabel} ${format(peakOverride ?? computedPeak)}`;
   const summary =
     data.length && active.length
-      ? `${active.map((s) => s.label).join('、')}，${tick(data[0].t, rawSpan)} 至 ${tick(data[data.length - 1].t, rawSpan)}，${data.length} 个采样，${peakLabel}`
+      ? `${active.map((s) => s.label).join('、')}，${tick(data[0].t, rawSpan)} 至 ${tick(data[data.length - 1].t, rawSpan)}，${data.length} 个采样，${summaryPeak}`
       : '暂无数据';
   const sideMax = (direction: number) =>
     Math.max(
@@ -193,7 +204,7 @@ export function TimeSeries({
                 ))}
               </span>
               <span style={{ flex: 'none', whiteSpace: 'nowrap' }}>
-                {selectable ? `${peakLabel} · 拖动选取时间段` : peakLabel}
+                {selectable ? `${summaryPeak} · 拖动选取时间段` : summaryPeak}
               </span>
             </div>
           )}
