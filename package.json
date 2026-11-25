@@ -1,0 +1,53 @@
+{
+  "name": "mokiea",
+  "version": "0.0.1",
+  "type": "module",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/okisdev/mokiea.git"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./charts": {
+      "types": "./dist/charts/index.d.ts",
+      "import": "./dist/charts/index.js"
+    },
+    "./tokens.css": "./dist/tokens.css",
+    "./ui.css": "./dist/ui.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm typecheck && pnpm build"
+  },
+  "peerDependencies": {
+    "preact": "^11.0.1"
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
+    "lucide-preact": "^1.61.0"
+  },
+  "devDependencies": {
+    "preact": "^11.0.1",
+    "tsdown": "^0.23.7",
+    "typescript": "^7.0.2"
+  }
+}
